@@ -1,0 +1,580 @@
+# Doctor Booking API Documentation
+
+## Overview
+This API provides endpoints for managing doctor listings, schedules, and patient bookings for a healthcare consultation platform.
+
+**Base URL:** `https://api.yourdomain.com/v1`
+
+**Authentication:** Bearer Token (if required)
+
+---
+
+## Table of Contents
+1. [Data Models](#data-models)
+2. [Endpoints](#endpoints)
+3. [Error Handling](#error-handling)
+4. [Rate Limiting](#rate-limiting)
+5. [Examples](#examples)
+
+---
+
+## Data Models
+
+### Doctor
+```json
+{
+  "id": "integer",
+  "name": "string",
+  "category": "enum ['UMUM', 'GIGI', 'MATA', 'KULIT', 'JANTUNG', 'ANAK']",
+  "location": "string",
+  "schedule": "string",
+  "rating": "number (0-5)",
+  "price": "string",
+  "image": "string (optional)",
+  "specialty": "string (optional)",
+  "experience": "integer (optional)"
+}
+```
+
+### DoctorSchedule
+```json
+{
+  "date": "string (YYYY-MM-DD)",
+  "timeSlots": [
+    {
+      "time": "string (HH:MM)",
+      "available": "boolean",
+      "price": "string"
+    }
+  ]
+}
+```
+
+### BookingRequest
+```json
+{
+  "doctorId": "integer",
+  "doctorName": "string",
+  "date": "string (YYYY-MM-DD)",
+  "time": "string (HH:MM)",
+  "price": "string",
+  "patientName": "string",
+  "patientPhone": "string",
+  "patientEmail": "string",
+  "notes": "string (optional)"
+}
+```
+
+### BookingResponse
+```json
+{
+  "id": "integer",
+  "bookingId": "string",
+  "status": "enum ['confirmed', 'pending', 'cancelled']",
+  "createdAt": "string (ISO 8601)",
+  "updatedAt": "string (ISO 8601)",
+  "doctorId": "integer",
+  "doctorName": "string",
+  "date": "string (YYYY-MM-DD)",
+  "time": "string (HH:MM)",
+  "price": "string",
+  "patientName": "string",
+  "patientPhone": "string",
+  "patientEmail": "string",
+  "notes": "string"
+}
+```
+
+---
+
+## Endpoints
+
+### 1. Get All Doctors
+
+**GET** `/doctors`
+
+Retrieve a list of all available doctors.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `category` | string | No | Filter by doctor category (UMUM, GIGI, MATA, KULIT, JANTUNG, ANAK) |
+| `location` | string | No | Filter by location |
+| `available` | boolean | No | Filter only available doctors |
+| `page` | integer | No | Page number for pagination (default: 1) |
+| `limit` | integer | No | Number of items per page (default: 20, max: 100) |
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Dr. Ahmad Wijaya, Sp.PD",
+      "category": "UMUM",
+      "location": "RS Siloam Jakarta",
+      "schedule": "Senin - Jumat, 08:00-16:00",
+      "rating": 4.8,
+      "price": "Rp 150.000",
+      "specialty": "Penyakit Dalam",
+      "experience": 8
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 50,
+    "totalPages": 3
+  }
+}
+```
+
+#### Error Responses
+- `400 Bad Request` - Invalid query parameters
+- `500 Internal Server Error` - Server error
+
+---
+
+### 2. Get Doctor by ID
+
+**GET** `/doctors/{id}`
+
+Retrieve detailed information about a specific doctor.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | Doctor ID |
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Dr. Ahmad Wijaya, Sp.PD",
+    "category": "UMUM",
+    "location": "RS Siloam Jakarta",
+    "schedule": "Senin - Jumat, 08:00-16:00",
+    "rating": 4.8,
+    "price": "Rp 150.000",
+    "image": "https://example.com/doctor1.jpg",
+    "specialty": "Penyakit Dalam",
+    "experience": 8,
+    "description": "Dokter spesialis penyakit dalam dengan pengalaman 8 tahun...",
+    "education": ["S1 Kedokteran UI", "Sp.PD RSCM"],
+    "languages": ["Indonesia", "English"]
+  }
+}
+```
+
+#### Error Responses
+- `404 Not Found` - Doctor not found
+- `500 Internal Server Error` - Server error
+
+---
+
+### 3. Get Doctor Schedule
+
+**GET** `/doctors/{id}/schedule`
+
+Retrieve the schedule and available time slots for a specific doctor.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | Doctor ID |
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `startDate` | string | No | Start date (YYYY-MM-DD, default: today) |
+| `endDate` | string | No | End date (YYYY-MM-DD, default: 7 days from start) |
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "date": "2025-08-01",
+      "timeSlots": [
+        {
+          "time": "08:00",
+          "available": true,
+          "price": "Rp 150.000"
+        },
+        {
+          "time": "09:00",
+          "available": false,
+          "price": "Rp 150.000"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Error Responses
+- `404 Not Found` - Doctor not found
+- `400 Bad Request` - Invalid date format
+- `500 Internal Server Error` - Server error
+
+---
+
+### 4. Create Booking
+
+**POST** `/bookings`
+
+Create a new booking for a doctor consultation.
+
+#### Request Headers
+```
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "doctorId": 1,
+  "doctorName": "Dr. Ahmad Wijaya, Sp.PD",
+  "date": "2025-08-01",
+  "time": "08:00",
+  "price": "Rp 150.000",
+  "patientName": "John Doe",
+  "patientPhone": "+6281234567890",
+  "patientEmail": "john.doe@email.com",
+  "notes": "Keluhan sakit perut"
+}
+```
+
+#### Response
+**Status:** `201 Created`
+```json
+{
+  "success": true,
+  "message": "Booking berhasil dibuat",
+  "data": {
+    "id": 123,
+    "bookingId": "BK-2025080100123",
+    "status": "confirmed",
+    "createdAt": "2025-07-31T10:30:00Z",
+    "updatedAt": "2025-07-31T10:30:00Z",
+    "doctorId": 1,
+    "doctorName": "Dr. Ahmad Wijaya, Sp.PD",
+    "date": "2025-08-01",
+    "time": "08:00",
+    "price": "Rp 150.000",
+    "patientName": "John Doe",
+    "patientPhone": "+6281234567890",
+    "patientEmail": "john.doe@email.com",
+    "notes": "Keluhan sakit perut"
+  }
+}
+```
+
+#### Error Responses
+- `400 Bad Request` - Invalid request data or time slot not available
+- `409 Conflict` - Time slot already booked
+- `422 Unprocessable Entity` - Validation errors
+- `500 Internal Server Error` - Server error
+
+---
+
+### 5. Get Booking by ID
+
+**GET** `/bookings/{id}`
+
+Retrieve details of a specific booking.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | Booking ID |
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "bookingId": "BK-2025080100123",
+    "status": "confirmed",
+    "createdAt": "2025-07-31T10:30:00Z",
+    "updatedAt": "2025-07-31T10:30:00Z",
+    "doctorId": 1,
+    "doctorName": "Dr. Ahmad Wijaya, Sp.PD",
+    "date": "2025-08-01",
+    "time": "08:00",
+    "price": "Rp 150.000",
+    "patientName": "John Doe",
+    "patientPhone": "+6281234567890",
+    "patientEmail": "john.doe@email.com",
+    "notes": "Keluhan sakit perut"
+  }
+}
+```
+
+#### Error Responses
+- `404 Not Found` - Booking not found
+- `500 Internal Server Error` - Server error
+
+---
+
+### 6. Update Booking Status
+
+**PATCH** `/bookings/{id}/status`
+
+Update the status of a booking (for admin/doctor use).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | Booking ID |
+
+#### Request Body
+```json
+{
+  "status": "confirmed|pending|cancelled",
+  "reason": "string (optional, required for cancellation)"
+}
+```
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Status booking berhasil diperbarui",
+  "data": {
+    "id": 123,
+    "status": "cancelled",
+    "updatedAt": "2025-07-31T11:00:00Z"
+  }
+}
+```
+
+#### Error Responses
+- `404 Not Found` - Booking not found
+- `400 Bad Request` - Invalid status or missing reason for cancellation
+- `500 Internal Server Error` - Server error
+
+---
+
+### 7. Get Patient Bookings
+
+**GET** `/bookings`
+
+Retrieve bookings for a specific patient (requires authentication or email parameter).
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | string | Yes* | Patient email (*required if not authenticated) |
+| `phone` | string | No | Patient phone number |
+| `status` | string | No | Filter by status |
+| `page` | integer | No | Page number (default: 1) |
+| `limit` | integer | No | Items per page (default: 10) |
+
+#### Response
+**Status:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "bookingId": "BK-2025080100123",
+      "status": "confirmed",
+      "createdAt": "2025-07-31T10:30:00Z",
+      "doctorName": "Dr. Ahmad Wijaya, Sp.PD",
+      "date": "2025-08-01",
+      "time": "08:00",
+      "price": "Rp 150.000"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## Error Handling
+
+All API endpoints return errors in a consistent format:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable error message",
+    "details": "Additional error details (optional)"
+  }
+}
+```
+
+### Common Error Codes
+- `VALIDATION_ERROR` - Request validation failed
+- `NOT_FOUND` - Resource not found
+- `ALREADY_BOOKED` - Time slot already booked
+- `INVALID_TIME_SLOT` - Time slot not available
+- `INTERNAL_ERROR` - Internal server error
+
+---
+
+## Rate Limiting
+
+The API implements rate limiting to prevent abuse:
+
+- **Public endpoints:** 100 requests per minute per IP
+- **Booking endpoints:** 10 requests per minute per IP
+- **Admin endpoints:** 1000 requests per minute (authenticated)
+
+Rate limit headers are included in responses:
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1627747200
+```
+
+---
+
+## Examples
+
+### Example 1: Get Doctors by Category
+
+**Request:**
+```bash
+curl -X GET "https://api.yourdomain.com/v1/doctors?category=UMUM&page=1&limit=5" \
+  -H "Accept: application/json"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Dr. Ahmad Wijaya, Sp.PD",
+      "category": "UMUM",
+      "location": "RS Siloam Jakarta",
+      "rating": 4.8,
+      "price": "Rp 150.000"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 5,
+    "total": 15,
+    "totalPages": 3
+  }
+}
+```
+
+### Example 2: Create a Booking
+
+**Request:**
+```bash
+curl -X POST "https://api.yourdomain.com/v1/bookings" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doctorId": 1,
+    "doctorName": "Dr. Ahmad Wijaya, Sp.PD",
+    "date": "2025-08-01",
+    "time": "08:00",
+    "price": "Rp 150.000",
+    "patientName": "John Doe",
+    "patientPhone": "+6281234567890",
+    "patientEmail": "john.doe@email.com",
+    "notes": "Keluhan sakit perut"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Booking berhasil dibuat",
+  "data": {
+    "id": 123,
+    "bookingId": "BK-2025080100123",
+    "status": "confirmed",
+    "createdAt": "2025-07-31T10:30:00Z"
+  }
+}
+```
+
+### Example 3: Get Doctor Schedule
+
+**Request:**
+```bash
+curl -X GET "https://api.yourdomain.com/v1/doctors/1/schedule?startDate=2025-08-01&endDate=2025-08-07" \
+  -H "Accept: application/json"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "date": "2025-08-01",
+      "timeSlots": [
+        {
+          "time": "08:00",
+          "available": true,
+          "price": "Rp 150.000"
+        },
+        {
+          "time": "09:00",
+          "available": false,
+          "price": "Rp 150.000"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Implementation Notes
+
+1. **Database Design:**
+   - Use proper indexing on frequently queried fields (doctor category, date, time)
+   - Implement soft deletes for bookings
+   - Use database constraints to prevent double bookings
+
+2. **Caching:**
+   - Cache doctor lists and schedules for better performance
+   - Invalidate cache when schedules are updated
+
+3. **Notifications:**
+   - Send email/SMS confirmations for bookings
+   - Send reminders before appointments
+
+4. **Security:**
+   - Validate all input data
+   - Implement proper authentication for sensitive operations
+   - Use HTTPS for all communications
+
+5. **Monitoring:**
+   - Log all booking operations
+   - Monitor API performance and error rates
+   - Set up alerts for high error rates
+
+---
+
+*Last updated: July 31, 2025*
