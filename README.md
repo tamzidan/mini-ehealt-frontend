@@ -19,10 +19,10 @@ Aplikasi ini dapat diakses secara publik melalui link berikut:
 ## 📸 Tampilan Aplikasi
 
 * **Halaman Utama (Daftar Dokter)**
-    ![Halaman Utama](https://freeimage.host/i/Fgzod7a)
+    ![Halaman Utama](https://i.postimg.cc/CLnkyKZw/Screenshot-2025-08-01-080705.png)
 
 * **Modal Booking Jadwal**
-    ![Modal Booking](https://freeimage.host/i/FgzI9r7)
+    ![Modal Booking](https://i.postimg.cc/gJBXQ9mw/Screenshot-2025-08-01-080726.png)
 
 ---
 
